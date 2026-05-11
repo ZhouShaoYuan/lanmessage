@@ -504,7 +504,7 @@ impl IpMsgApp {
             .order(egui::Order::Foreground)
             .fixed_pos(screen_rect.min)
             .interactable(true)
-            .anchor(egui::Align2::LEFT_TOP, egui::Vec2::ZERO);;
+            .anchor(egui::Align2::LEFT_TOP, egui::Vec2::ZERO);
 
         let mut crop_result: Option<(PathBuf, String)> = None;
 

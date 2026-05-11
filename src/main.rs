@@ -13,7 +13,7 @@ mod storage;
 
 fn main() -> eframe::Result<()> {
     setup_panic!();
-    std::env::set_var("RUST_LOG", "info");
+
     env_logger::init();
 
     let icon = std::fs::read("resources/logo.png")
