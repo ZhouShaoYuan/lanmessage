@@ -935,10 +935,11 @@ fn draw_chat_panel(
         .show(ui, |ui| {
             // Row 1: text input + send button
             ui.horizontal(|ui| {
-                let text_width = ui.available_width() - 68.0;
-                let response = ui.add(
+                let text_width = (ui.available_width() - 68.0).max(80.0);
+                let response = ui.add_sized(
+                    [text_width, 58.0],
                     egui::TextEdit::multiline(&mut panel.compose_text)
-                        .desired_width(text_width.max(300.0))
+                        .desired_width(text_width)
                         .desired_rows(3)
                         .hint_text("输入消息..."),
                 );
@@ -1131,8 +1132,9 @@ fn draw_sent_bubble(
     preview_clicked: &mut Option<String>,
     texture_cache: &mut HashMap<String, egui::TextureHandle>,
 ) {
-    let max_w = ui.available_width() * 0.65;
-    let pad = 20.0;
+    let avail = ui.available_width();
+    let max_outer = (avail * 0.70).max(60.0);
+    let margin = 20.0; // frame inner_margin(10) * 2
 
     let content_w = if !content.is_empty() {
         measure_text_width(ui, content, egui::FontId::proportional(13.0))
@@ -1146,24 +1148,28 @@ fn draw_sent_bubble(
     let has_images = files.iter().enumerate().any(|(i, f)| {
         image_utils::is_image_file(f) && file_paths.get(i).map_or(false, |p| Path::new(p).exists())
     });
-    let img_w = if has_images { THUMBNAIL_MAX_W + pad } else { 0.0 };
-    let bubble_w = (content_w.max(files_w).max(img_w) + pad).min(max_w);
+    let img_w = if has_images { THUMBNAIL_MAX_W } else { 0.0 };
+    let outer_w = (content_w.max(files_w).max(img_w) + margin).min(max_outer);
+    let inner_w = (outer_w - margin).max(20.0);
 
     ui.horizontal(|ui| {
-        let push = (ui.available_width() - bubble_w - 8.0).max(8.0);
+        let push = (avail - outer_w - 4.0).max(4.0);
         ui.add_space(push);
         egui::Frame::none()
             .fill(SENT_BUBBLE)
             .rounding(egui::Rounding::same(10.0))
             .inner_margin(egui::Margin::same(10.0))
             .show(ui, |ui| {
-                ui.set_max_width(bubble_w);
+                ui.set_max_width(inner_w);
                 ui.vertical(|ui| {
                     if !content.is_empty() {
-                        ui.label(
-                            egui::RichText::new(content)
-                                .size(13.0)
-                                .color(egui::Color32::WHITE),
+                        ui.add(
+                            egui::Label::new(
+                                egui::RichText::new(content)
+                                    .size(13.0)
+                                    .color(egui::Color32::WHITE),
+                            )
+                            .wrap(),
                         );
                     }
                     for (i, f) in files.iter().enumerate() {
@@ -1234,8 +1240,9 @@ fn draw_received_bubble(
         ui.add_space(4.0);
 
         // Bubble
-        let max_w = ui.available_width() * 0.7;
-        let pad = 20.0;
+        let avail = ui.available_width();
+        let max_outer = (avail * 0.75).max(60.0);
+        let margin = 20.0; // frame inner_margin(10) * 2
         let content_w = if !content.is_empty() {
             measure_text_width(ui, content, egui::FontId::proportional(13.0))
         } else {
@@ -1250,15 +1257,16 @@ fn draw_received_bubble(
             image_utils::is_image_file(&f.name)
                 && f.downloaded_path.as_ref().map_or(false, |p| Path::new(p).exists())
         });
-        let img_w = if has_images { THUMBNAIL_MAX_W + pad } else { 0.0 };
-        let bubble_w = (content_w.max(files_w).max(name_w).max(img_w) + pad).min(max_w);
+        let img_w = if has_images { THUMBNAIL_MAX_W } else { 0.0 };
+        let outer_w = (content_w.max(files_w).max(name_w).max(img_w) + margin).min(max_outer);
+        let inner_w = (outer_w - margin).max(20.0);
 
         egui::Frame::none()
             .fill(RECV_BUBBLE)
             .rounding(egui::Rounding::same(10.0))
             .inner_margin(egui::Margin::same(10.0))
             .show(ui, |ui| {
-                ui.set_max_width(bubble_w);
+                ui.set_max_width(inner_w);
                 ui.vertical(|ui| {
                     // Sender name
                     ui.label(
@@ -1268,10 +1276,13 @@ fn draw_received_bubble(
                             .strong(),
                     );
                     if !content.is_empty() {
-                        ui.label(
-                            egui::RichText::new(content)
-                                .size(13.0)
-                                .color(egui::Color32::from_rgb(50, 50, 50)),
+                        ui.add(
+                            egui::Label::new(
+                                egui::RichText::new(content)
+                                    .size(13.0)
+                                    .color(egui::Color32::from_rgb(50, 50, 50)),
+                            )
+                            .wrap(),
                         );
                     }
                     // File attachments
@@ -1294,10 +1305,14 @@ fn draw_received_bubble(
                                 ui.horizontal(|ui| {
                                     ui.label(egui::RichText::new("📎").size(13.0));
                                     ui.vertical(|ui| {
-                                        ui.label(
-                                            egui::RichText::new(&f.name)
-                                                .size(12.0)
-                                                .color(egui::Color32::from_rgb(40, 40, 40)),
+                                        ui.set_max_width((inner_w - 48.0).max(40.0));
+                                        ui.add(
+                                            egui::Label::new(
+                                                egui::RichText::new(&f.name)
+                                                    .size(12.0)
+                                                    .color(egui::Color32::from_rgb(40, 40, 40)),
+                                            )
+                                            .wrap(),
                                         );
                                         ui.label(
                                             egui::RichText::new(format_size(f.size))
